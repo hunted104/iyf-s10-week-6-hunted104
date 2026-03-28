@@ -3,7 +3,7 @@
 ## Author
 - **Name:** Ian mutugi
 - **GitHub:** [@hunted104](https://github.com/hunted104)
-- **Date:** March ,23, 2026
+- **Date:** March ,28, 2026
 
 ## Project Description
 The project entails the creation of a weather dashboard for better weather study and analysis which also includes the creation of a post that enhanced the development and improvement of the javascript coding in inclution of html codes.
