@@ -1,191 +1,216 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Weather Dashboard</title>
-    <link rel="stylesheet" href="styles.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather Dashboard</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: linear-gradient(135deg,#667eea,#764ba2);
+  color:#333;
+  padding:20px;
+}
+
+.weather-app {
+  max-width:900px;
+  margin:auto;
+  background:white;
+  padding:20px;
+  border-radius:10px;
+}
+
+input, button {
+  padding:10px;
+  margin:5px;
+}
+
+.hidden { display:none; }
+
+.forecast {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:10px;
+}
+
+.card {
+  background:#f0f2ff;
+  padding:10px;
+  border-radius:8px;
+  text-align:center;
+}
+</style>
 </head>
+
 <body>
-    <div class="weather-app">
-        <h1>Weather Dashboard</h1>
-        
-        <form id="search-form">
-            <input 
-                type="text" 
-                id="city-input" 
-                placeholder="Enter city name..."
-                required
-            >
-            <button type="submit">Search</button>
-        </form>
-        
-        <div id="loading" class="hidden">
-            Loading...
-        </div>
-        
-        <div id="error" class="hidden error">
-        </div>
-        
-        <div id="weather-display" class="hidden">
-            <div class="weather-main">
-                <h2 id="city-name"></h2>
-                <img id="weather-icon" src="" alt="Weather icon">
-                <p id="temperature"></p>
-                <p id="description"></p>
-            </div>
-            
-            <div class="weather-details">
-                <div class="detail">
-                    <span>Feels Like</span>
-                    <span id="feels-like"></span>
-                </div>
-                <div class="detail">
-                    <span>Humidity</span>
-                    <span id="humidity"></span>
-                </div>
-                <div class="detail">
-                    <span>Wind</span>
-                    <span id="wind"></span>
-                </div>
-                <div class="detail">
-                    <span>Pressure</span>
-                    <span id="pressure"></span>
-                </div>
-            </div>
-        </div>
-        
-        <div id="recent-searches">
-            <h3>Recent Searches</h3>
-            <ul id="search-history"></ul>
-        </div>
-    </div>
-    
-    <script>
-        const API_KEY = "67187ba9e7ac9a4707406a665e0188c0";
+
+<div class="weather-app">
+  <h1>Weather Dashboard</h1>
+
+  <form id="form">
+    <input type="text" id="city" placeholder="Enter city" required>
+    <button>Search</button>
+  </form>
+
+  <p id="loading" class="hidden">Loading...</p>
+  <p id="error" class="hidden"></p>
+
+  <div id="current" class="hidden">
+    <h2 id="name"></h2>
+    <p id="temp"></p>
+    <p id="desc"></p>
+  </div>
+
+  <h3 id="forecast-title" class="hidden">Forecast</h3>
+  <div id="forecast" class="forecast"></div>
+
+  <h3>Recent Searches</h3>
+  <ul id="history"></ul>
+</div>
+
+<script>
+     const API_KEY = "67187ba9e7ac9a4707406a665e0188c0";
 const BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
 
-// DOM Elements
-const form = document.getElementById("search-form");
-const cityInput = document.getElementById("city-input");
+// DOM
+const form = document.getElementById("form");
+const cityInput = document.getElementById("city");
 const loading = document.getElementById("loading");
 const error = document.getElementById("error");
-const weatherDisplay = document.getElementById("weather-display");
 
-// Elements to update
-const cityName = document.getElementById("city-name");
-const weatherIcon = document.getElementById("weather-icon");
-const temperature = document.getElementById("temperature");
-const description = document.getElementById("description");
-const feelsLike = document.getElementById("feels-like");
-const humidity = document.getElementById("humidity");
-const wind = document.getElementById("wind");
-const pressure = document.getElementById("pressure");
+const nameEl = document.getElementById("name");
+const tempEl = document.getElementById("temp");
+const descEl = document.getElementById("desc");
+const currentEl = document.getElementById("current");
 
+const forecastEl = document.getElementById("forecast");
+const forecastTitle = document.getElementById("forecast-title");
+
+const historyEl = document.getElementById("history");
+
+// MAIN FUNCTION
 async function getWeather(city) {
-    const url = `${BASE_URL}?q=${city}&appid=${API_KEY}&units=metric`;
-    
-    try {
-        showLoading();
-        hideError();
-        
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            if (response.status === 404) {
-                throw new Error("City not found");
-            }
-            throw new Error("Failed to fetch weather data");
-        }
-        
-        const data = await response.json();
-        displayWeather(data);
-        saveToHistory(city);
-        
-    } catch (err) {
-        showError(err.message);
-    } finally {
-        hideLoading();
-    }
+  try {
+    showLoading();
+    hideError();
+
+    // CURRENT WEATHER
+    const res1 = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`
+    );
+
+    if (!res1.ok) throw new Error("City not found");
+
+    const data1 = await res1.json();
+
+    // FORECAST (3-hour intervals)
+    const res2 = await fetch(
+      `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=metric`
+    );
+
+    const data2 = await res2.json();
+
+    displayCurrent(data1);
+    displayForecast(data2.list);
+
+    saveHistory(city);
+
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    hideLoading();
+  }
 }
 
-function displayWeather(data) {
-    cityName.textContent = `${data.name}, ${data.sys.country}`;
-    temperature.textContent = `${data.main.temp}°C`;
-    description.textContent = data.weather[0].description;
-    feelsLike.textContent = `${data.main.feels_like}°C`;
-    humidity.textContent = `${data.main.humidity}%`;
-    wind.textContent = `${data.wind.speed} m/s`;
-    pressure.textContent = `${data.main.pressure} hPa`;
+// CURRENT WEATHER
+function displayCurrent(data) {
+  nameEl.textContent = data.name;
+  tempEl.textContent = Math.round(data.main.temp) + "°C";
+  descEl.textContent = data.weather[0].description;
 
-    const icon = data.weather[0].icon;
-    weatherIcon.src = `https://openweathermap.org/img/wn/${icon}@2x.png`;
-
-    weatherDisplay.classList.remove("hidden");
-}
-function showLoading() {
-    loading.classList.remove("hidden");
-    weatherDisplay.classList.add("hidden");
+  currentEl.classList.remove("hidden");
 }
 
-function hideLoading() {
-    loading.classList.add("hidden");
+// FORECAST
+function displayForecast(list) {
+  forecastEl.innerHTML = "";
+  forecastTitle.classList.remove("hidden");
+
+  // pick 1 per day (every 8th)
+  const daily = list.filter((item, i) => i % 8 === 0);
+
+  daily.slice(0,5).forEach(item => {
+    const date = new Date(item.dt * 1000);
+    const day = date.toLocaleDateString("en-US",{weekday:"short"});
+
+    const div = document.createElement("div");
+    div.className = "card";
+
+    div.innerHTML = `
+      <h4>${day}</h4>
+      <p>${Math.round(item.main.temp)}°C</p>
+      <p>${item.weather[0].description}</p>
+    `;
+
+    forecastEl.appendChild(div);
+  });
 }
 
-function showError(message) {
-    error.textContent = message;
-    error.classList.remove("hidden");
-}
+// HISTORY
+function saveHistory(city) {
+  let history = JSON.parse(localStorage.getItem("history")) || [];
 
-function hideError() {
-    error.classList.add("hidden");
-}
+  history.unshift(city);
+  history = [...new Set(history)].slice(0,5);
 
-function saveToHistory(city) {
-    let history = JSON.parse(localStorage.getItem("history")) || [];
-
-    // Add new city to the beginning
-    history.unshift(city);
-
-    // Remove duplicates
-    history = [...new Set(history)];
-
-    // Keep only last 5
-    history = history.slice(0, 5);
-
-    // Save back to localStorage
-    localStorage.setItem("history", JSON.stringify(history));
-
-    // Refresh display
-    loadHistory();
+  localStorage.setItem("history", JSON.stringify(history));
+  loadHistory();
 }
 
 function loadHistory() {
-    const history = JSON.parse(localStorage.getItem("history")) || [];
-    const list = document.getElementById("search-history");
+  let history = JSON.parse(localStorage.getItem("history")) || [];
 
-    list.innerHTML = history.map(city =>
-        `<li style="cursor:pointer;">${city}</li>`
-    ).join("");
+  historyEl.innerHTML = "";
 
-    // Add click event to each city
-    const items = list.querySelectorAll("li");
-    items.forEach(item => {
-        item.addEventListener("click", () => {
-            getWeather(item.textContent);
-        });
-    });
+  history.forEach(city => {
+    const li = document.createElement("li");
+    li.textContent = city;
+
+    li.onclick = () => getWeather(city);
+
+    historyEl.appendChild(li);
+  });
 }
-// Event Listeners
-form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const city = cityInput.value.trim();
-    if (city) {
-        getWeather(city);
-    }
+
+// UI
+function showLoading() {
+  loading.classList.remove("hidden");
+}
+
+function hideLoading() {
+  loading.classList.add("hidden");
+}
+
+function showError(msg) {
+  error.textContent = msg;
+  error.classList.remove("hidden");
+}
+
+function hideError() {
+  error.classList.add("hidden");
+}
+
+// EVENT
+form.addEventListener("submit", e => {
+  e.preventDefault();
+  const city = cityInput.value.trim();
+  if (city) getWeather(city);
 });
 
-// Initialize
+// INIT
 loadHistory();
-    </script>
+</script>
+
 </body>
 </html>
