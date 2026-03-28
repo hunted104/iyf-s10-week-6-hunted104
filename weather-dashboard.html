@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Weather Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="weather-app">
+        <h1>Weather Dashboard</h1>
+        
+        <form id="search-form">
+            <input 
+                type="text" 
+                id="city-input" 
+                placeholder="Enter city name..."
+                required
+            >
+            <button type="submit">Search</button>
+        </form>
+        
+        <div id="loading" class="hidden">
+            Loading...
+        </div>
+        
+        <div id="error" class="hidden error">
+        </div>
+        
+        <div id="weather-display" class="hidden">
+            <div class="weather-main">
+                <h2 id="city-name"></h2>
+                <img id="weather-icon" src="" alt="Weather icon">
+                <p id="temperature"></p>
+                <p id="description"></p>
+            </div>
+            
+            <div class="weather-details">
+                <div class="detail">
+                    <span>Feels Like</span>
+                    <span id="feels-like"></span>
+                </div>
+                <div class="detail">
+                    <span>Humidity</span>
+                    <span id="humidity"></span>
+                </div>
+                <div class="detail">
+                    <span>Wind</span>
+                    <span id="wind"></span>
+                </div>
+                <div class="detail">
+                    <span>Pressure</span>
+                    <span id="pressure"></span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="recent-searches">
+            <h3>Recent Searches</h3>
+            <ul id="search-history"></ul>
+        </div>
+    </div>
+    
+    <script>
+        const API_KEY = "67187ba9e7ac9a4707406a665e0188c0";
+const BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
+
+// DOM Elements
+const form = document.getElementById("search-form");
+const cityInput = document.getElementById("city-input");
+const loading = document.getElementById("loading");
+const error = document.getElementById("error");
+const weatherDisplay = document.getElementById("weather-display");
+
+// Elements to update
+const cityName = document.getElementById("city-name");
+const weatherIcon = document.getElementById("weather-icon");
+const temperature = document.getElementById("temperature");
+const description = document.getElementById("description");
+const feelsLike = document.getElementById("feels-like");
+const humidity = document.getElementById("humidity");
+const wind = document.getElementById("wind");
+const pressure = document.getElementById("pressure");
+
+async function getWeather(city) {
+    const url = `${BASE_URL}?q=${city}&appid=${API_KEY}&units=metric`;
+    
+    try {
+        showLoading();
+        hideError();
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error("City not found");
+            }
+            throw new Error("Failed to fetch weather data");
+        }
+        
+        const data = await response.json();
+        displayWeather(data);
+        saveToHistory(city);
+        
+    } catch (err) {
+        showError(err.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+function displayWeather(data) {
+    cityName.textContent = `${data.name}, ${data.sys.country}`;
+    temperature.textContent = `${data.main.temp}°C`;
+    description.textContent = data.weather[0].description;
+    feelsLike.textContent = `${data.main.feels_like}°C`;
+    humidity.textContent = `${data.main.humidity}%`;
+    wind.textContent = `${data.wind.speed} m/s`;
+    pressure.textContent = `${data.main.pressure} hPa`;
+
+    const icon = data.weather[0].icon;
+    weatherIcon.src = `https://openweathermap.org/img/wn/${icon}@2x.png`;
+
+    weatherDisplay.classList.remove("hidden");
+}
+function showLoading() {
+    loading.classList.remove("hidden");
+    weatherDisplay.classList.add("hidden");
+}
+
+function hideLoading() {
+    loading.classList.add("hidden");
+}
+
+function showError(message) {
+    error.textContent = message;
+    error.classList.remove("hidden");
+}
+
+function hideError() {
+    error.classList.add("hidden");
+}
+
+function saveToHistory(city) {
+    let history = JSON.parse(localStorage.getItem("history")) || [];
+
+    // Add new city to the beginning
+    history.unshift(city);
+
+    // Remove duplicates
+    history = [...new Set(history)];
+
+    // Keep only last 5
+    history = history.slice(0, 5);
+
+    // Save back to localStorage
+    localStorage.setItem("history", JSON.stringify(history));
+
+    // Refresh display
+    loadHistory();
+}
+
+function loadHistory() {
+    const history = JSON.parse(localStorage.getItem("history")) || [];
+    const list = document.getElementById("search-history");
+
+    list.innerHTML = history.map(city =>
+        `<li style="cursor:pointer;">${city}</li>`
+    ).join("");
+
+    // Add click event to each city
+    const items = list.querySelectorAll("li");
+    items.forEach(item => {
+        item.addEventListener("click", () => {
+            getWeather(item.textContent);
+        });
+    });
+}
+// Event Listeners
+form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const city = cityInput.value.trim();
+    if (city) {
+        getWeather(city);
+    }
+});
+
+// Initialize
+loadHistory();
+    </script>
+</body>
+</html>
